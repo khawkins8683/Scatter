@@ -44,6 +44,11 @@ def KScatter(kIn,theta,phi):
     kScat = np.dot(RotZtoKin, kNewZ)
     return kScat.transpose().flatten()
 
+def ScatterEta(kIn,kScat):
+    #add vectors together and then normalize
+    eta = normalize(kIn + kScat)
+    return eta
+
 ## Ray trace functions
 #for fresnel scatter -> eta is midway between the input K and scatter K
 def TIRCheck(n1,n2,eta,kin):   
@@ -100,6 +105,8 @@ def RotationMatrix(u,v):
     return R
 
 
+#fresnel Coefficients
+
 ## PRT --------------------
 def JonesAddDim(jm):
     jm3d = np.array([
@@ -114,3 +121,32 @@ def PRT(jm,eta,kin,kScatter):
     oOut = CreateSP(eta,kScatter)
     prt = functools.reduce( np.dot, [oOut.transpose() , JonesAddDim(jm), oIn ])
     return prt
+
+
+
+#Polarization Calculus
+#JonesToMueller
+def JonesToMueller(j):
+    u = np.array([
+            [1,0,  0,  1],
+            [1,0,  0, -1],
+            [0,1,  1,  0],
+            [0,1j,-1j, 0]
+        ])/2
+    uinv=np.array([[1,1,0,0],[0,0,1,-1j],[0,0,1,1j],[1,-1,0,0]])
+
+    m1 = np.array([[  j[0,0]*np.conj(j[0,0]), j[0,0]*np.conj(j[0,1]), j[0,1]*np.conj(j[0,0]), j[0,1]*np.conj(j[0,1])     ],
+                   [  j[0,0]*np.conj(j[1,0]), j[0,0]*np.conj(j[1,1]), j[0,1]*np.conj(j[1,0]), j[0,1]*np.conj(j[1,1])     ],
+                   [  j[1,0]*np.conj(j[0,0]), j[0,1]*np.conj(j[0,1]), j[1,1]*np.conj(j[0,0]), j[1,1]*np.conj(j[0,1])     ],
+                   [  j[1,0]*np.conj(j[1,0]), j[1,0]*np.conj(j[1,1]), j[1,1]*np.conj(j[1,0]), j[1,1]*np.conj(j[1,1])     ]])
+    mm = functools.reduce( np.dot, [u,m1,uinv])
+    return mm
+
+def RotM(theta):
+    mm = np.array([[1,0,0,0],[0,np.cos(2*theta),np.sin(2*theta),0],[0,-np.sin(2*theta),np.cos(2*theta),0],[0,0,0,1] ])
+    return mm
+
+def RotateMueller(mm,theta):
+    rot = RotM(theta)
+    mmRot = functools.reduce( np.dot, [ rot, mm, np.linalg.inv(rot) ])
+    return mmRot

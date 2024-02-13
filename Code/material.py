@@ -28,7 +28,7 @@ class Material:
 
     def sampleDistance(self):
         #note this assumes self type is exp
-        d = ExpSample( np.random.rand() , self.scatParams.mean )
+        d = ExpSample( np.random.rand() , self.scatParams['mean'] )
         return d
     
     #run this to check for absobption 

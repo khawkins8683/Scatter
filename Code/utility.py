@@ -23,12 +23,9 @@ def SignedVectorAngle(v1,v2,sign = 1):
 
     return angle
 
-
 #General Optics
 def SnellsLaw(n1,n2,theta):
     return np.arcsin( (n1/n2)*np.sin(theta) )
-
-
 
 # KVector stuff
 def KVector(theta,phi):
@@ -58,18 +55,17 @@ def TIRCheck(n1,n2,eta,kin):
         return True
     else:
         return False
-#Todo snell and reflect 3D
+
 def Refract3D(n1,n2,eta,kin, debug= False):   
     mu = (n1/n2)
     sIn = np.cross(eta,kin)
     metaXk = np.cross(eta,kin)#np.cross(-1*eta,kin)
-
-    factor1 = mu*np.cross(eta,metaXk)
     g1 = ((mu**2)*np.linalg.norm(sIn)**2)
     #if g1>1 then we have TIR and need to run reflect3D
     if (g1>1):
         if debug: print("TIR")
         return Reflect3D(eta,kin)
+    factor1 = mu*np.cross(eta,metaXk)
     factor2 = eta*np.sqrt(1-g1)
     kOut = -1*(factor1-factor2)
     return kOut

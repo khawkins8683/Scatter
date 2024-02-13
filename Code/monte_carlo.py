@@ -1,10 +1,9 @@
-import functools 
 import math
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pySCATMECH as scatmech
 from pySCATMECH.fresnel import *
+from . import ray as r
 
 thresh = 1E-15
 deg = np.pi/180
@@ -17,15 +16,6 @@ air = scatmech.fresnel.OpticalFunction(1)
 def rs(mat1,mat2,wavelength,aoi):
     [[rs,rps],[rps,rp]]=stack.reflectionCoefficient(20*deg,0.5,air,glass)
 
-
-def ProbDist( x, beta ):
-    prob = (1/beta)*np.exp(-x / beta)
-    return prob
-
-
-def ExpSample(xRand,beta):
-    xSample = -beta*np.log(1-xRand)
-    return xSample
 
 #now we need a function to randomly sample phase functions
 #integrate the CDF
@@ -41,80 +31,45 @@ def RayleighJones(thetaScat): # I don't think we need phi scat just yet
 ## TODO - add in prt - jones from fresnel
 ## TODO - adding ray paths together/ making BSDF from ray paths
 
-def MonteCarloTrace(RayPath, DiffuseMaterial, debug= False):
+def MonteCarloTrace(RayPath, mat1, DiffuseMaterial, debug= False):
     thickness = DiffuseMaterial.thickness
     # Step 1 -> refract ray into the material
-    kMat = Refract3D(1.0,  DiffuseMaterial.n , np.array([0,0,1]), RayPath.k , debug)
+    kMat = RayPath.refract(np.array([0,0,1]), mat1, DiffuseMaterial)
     RayPath.k = kMat
     #now update the ray polarization properties
 
     #now that we are in the material we will propagate the ray until a z component is either 0<z<thickness
-    live = True
-    i = 1
+    live = True;i = 1
     while live:
         i += 1
-        #step  1.1 get prop distance -- TODO: put the exp distribution as a type in the material
-        d = ExpSample( np.random.rand() , DiffuseMaterial.gamma )#TODO think about doing a random seed for reproducibility
-        
-        #now prop ray d
-        r = d*RayPath.k + RayPath.r[-1]
-
-        #check 
-        z = r[-1]
- 
-        if z<0 or z>thickness:
-            if debug: print("CHECK TRiggered!!!!!")
-             #TODO --- do not kill rays if they TIR
-            if z<0:
+        #step  1.1 get prop distance 
+        r = DiffuseMaterial.sampleDistance()*RayPath.k + RayPath.r[-1]
+        #check to see if we leave the material
+        #update ray r and ray k
+        if r[-1]<0 or r[-1]>thickness:
+            if debug: print("CHECK TRiggered")
+            if r[-1]<0:#see if retro reflection occus
+                # prop ray to the edge of the material
                 if debug: print("REFLECT")
-                deltaZ = RayPath.r[-1][-1] - 0 #-thickness for transmission
-                cosTheta = np.dot(np.array([0,0,-1]), RayPath.k)
-                dPrime = deltaZ/cosTheta
-                r = dPrime*RayPath.k + RayPath.r[-1]
-                r[np.abs(r) < thresh ] = 0
-                k = Refract3D(DiffuseMaterial.n, 1 , np.array([0,0,-1]), RayPath.k )
-                live = TIRCheck(DiffuseMaterial.n,1.0,np.array([0,0,-1]),RayPath.k)
-            if z>thickness:
+                live = RayPath.interface(DiffuseMaterial,mat1,0,-1)
+            if r[-1]>thickness:#see if ray transmits
                 if debug: print("Transmit")
-                deltaZ = thickness - RayPath.r[-1][-1] #-thickness for transmission
-                cosTheta = np.dot(np.array([0,0,1]), RayPath.k)# eta switches sign for other side of material
-                dPrime = cosTheta*deltaZ
-                r = dPrime*RayPath.k + RayPath.r[-1]
-                k = Refract3D(DiffuseMaterial.n, 1 , np.array([0,0,1]), RayPath.k )
-                live = TIRCheck(DiffuseMaterial.n,1.0,np.array([0,0,1]),RayPath.k)
+                live = RayPath.interface(DiffuseMaterial,mat1,thickness,1)
         else:
             pass
             # get scatter k direction
-            [theta,phi] = IsotropicPhaseFunction(1)
-            k = KScatter( RayPath.k ,theta,phi)
-        #check again
-        z = r[-1];    
-        if z<0 or z>thickness:
-            print("ERRROR:: ---------")
-            print("live: ",live)
-            print("kOut",k)
-            print("kIn",RayPath.k)
-            print('rOut',r)
-            print('rIN', RayPath.r[-1])
-            print("D: ",d)
-            print("D`: ",dPrime)
-            print("dZ: ",deltaZ)
-
-
-        #now update ray parameters
-        RayPath.k = k
-        RayPath.r = np.append(RayPath.r , np.array([r]), axis = 0)
-        #if i > 1000:    live = False
-        
+            [theta,phi] = DiffuseMaterial.phaseFunction(RayPath)#theta and phi are relative to the ray
+            live = RayPath.scatter(theta,phi,r)#just use previously calculated r
+        #TODO - update more ray parameters
+        RayPath.updateTransmission(DiffuseMaterial)
     return RayPath
 
 def MonteCarloTrial(N,Mat,wavelength,kIn, debug= False):
     if debug: i=0
     rayList = []
     for i in range(N):
-        if debug: i+=1
         if debug: print( "Tracing Ray i: ", i )
-        rayList.append( MonteCarloTrace( Ray(kIn, np.array([0,0,0]), wavelength ), Mat, debug  ) )
+        rayList.append( MonteCarloTrace( r.Ray(kIn, np.array([0,0,0]), wavelength ), Mat, debug  ) )
     return rayList
 
 

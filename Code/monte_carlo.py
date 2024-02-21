@@ -6,14 +6,11 @@ from pySCATMECH.fresnel import *
 from . import ray as r
 from . import utility as u
 
-stack = scatmech.fresnel.FilmStack()
-glass = scatmech.fresnel.OpticalFunction(1.5)
-air = scatmech.fresnel.OpticalFunction(1)
-
-
-
-def rs(mat1,mat2,wavelength,aoi):
-    [[rs,rps],[rps,rp]]=stack.reflectionCoefficient(20*deg,0.5,air,glass)
+#stack = scatmech.fresnel.FilmStack()
+#glass = scatmech.fresnel.OpticalFunction(1.5)
+#air = scatmech.fresnel.OpticalFunction(1)
+#def rs(mat1,mat2,wavelength,aoi):
+#    [[rs,rps],[rps,rp]]=stack.reflectionCoefficient(20*deg,0.5,air,glass)
 
 
 #now we need a function to randomly sample phase functions
@@ -96,14 +93,3 @@ def MonteCarloTrial(N,mat1,mat2,wavelength,kIn, debug= False):
         if debug: print( "Tracing Ray i: ", i )
         rayList.append( MonteCarloTrace( r.Ray(kIn, np.array([0,0,0]), wavelength ), mat1, mat2, debug  ) )
     return rayList
-
-
-
-
-
-#----------------------------------------------------------------------------------------------------------------------------------------
-## Plotting functions
-
-
-
-

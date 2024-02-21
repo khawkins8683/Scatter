@@ -27,8 +27,7 @@ class Ray:
         self.jones = np.array([ np.identity(2) ])
         self.PRT = np.array([ np.identity(3) ])
         self.MM = np.array([ np.identity(4) ])
-    
-
+#methods
 # Cumulative calculations OPL/PRT/Q
     def OPLCumulative(self):
         return np.sum(self.OPL)
@@ -76,7 +75,7 @@ class Ray:
         abs = np.exp(  -2*np.pi/(self.wavelength/1E6) * mat.k * distance )#conver wl to meters
         self.transmission = np.append(self.transmission , np.array([abs]), axis = 0)
         return abs
-
+#update jones/calculate jones
     def updateJonesSPFresnel(self, eta, mat1,mat2, mode):
         n1 = mat1.n + 1j *mat1.k
         n2 = mat2.n + 1j *mat2.k
@@ -101,19 +100,16 @@ class Ray:
         jones = np.identity(2)
         self.jones = np.append(self.jones , np.array([jones]), axis = 0)
         return jones
-
+#geometry updates
     def updateHorizontal(self,kin):#*note k should be updated before this is called!!!!!!!!
         h = np.cross(kin,self.k)
         self.horizontal = np.append(self.horizontal , np.array([h]), axis = 0)
         return h   
-
-
-
     def updateQMatrix(self,eta,kin):#*note k should be updated before this is called!!!!!!!!
         q = u.PRT(np.identity(2), eta,kin, self.k)
         self.Q = np.append(self.Q , np.array([q]), axis = 0)
         return q    
-
+#polarization matrix updates - based ON JONES matrix
     def updatePRTMatrix(self,eta,kin):#*note k should be updated before this is called!!!!!!!!
         prt = u.PRT(self.jones[-1], eta,kin, self.k)
         self.PRT = np.append(self.Q , np.array([prt]), axis = 0)

@@ -107,32 +107,44 @@ def BinRaysInteraction(raySet):
 
 
 #BSDF --------------------------
-def BinRaysBSDF(raySet,n):
+def getAngularBinVectors(n):
     #step 1 get the rays and bins
-    #rays
-    [refRays,transRays] = SortRefTrans(raySet)
     #bins/k vectors
     trans = []
     ref = []
     pts = fibonacci_sphere(samples=n)
     for pt in np.array(pts):
         # ref
-        if u.vectorAngle(np.array([0,0,-1]),pt) <= np.pi/2:
+        if pt[2] <= 0:
             ref.append(pt)
-            trans.append(np.array(pt)*np.array([0,0,-1]))
+            trans.append(np.array(pt)*np.array([1,1,-1]))
+    return [ref, trans]
+
+
+
+def BinRaysBSDF(raySet,n):
+    #step 1 get the rays and bins
+    #rays
+    [refRays,transRays] = SortRefTrans(raySet)
+    [ref, trans] = getAngularBinVectors(n)
 
     #step 2 get the cone angle
-    s=1.0
+    #we can overfill 
+    s=2.0
     nr=len(ref)
     r = np.sqrt((1+s)*2/nr)
     theta = np.arctan(r)/2
+    #theta = 2*np.pi/np.sqrt(nr)
 
     #now bin reflected rays
     binnedRefRays = []
     for binVec in ref:
         rayBin = []
+        
         for ray in refRays:
+            #print("Ref ray k, kbin, angle",ray.k,binVec,u.vectorAngle(ray.k,binVec))
             if u.vectorAngle(ray.k,binVec) <= theta:
+                #print("success!")
                 #append
                 rayBin.append(ray)
         binnedRefRays.append([binVec,rayBin])
@@ -142,8 +154,10 @@ def BinRaysBSDF(raySet,n):
     for binVec in trans:
         rayBin = []
         for ray in transRays:
+            #print("trans ray k, kbin, angle",ray.k,binVec,u.vectorAngle(ray.k,binVec),theta)
             if u.vectorAngle(ray.k,binVec) <= theta:
                 #append
+                #print("success!")
                 rayBin.append(ray)
         binnedTransRays.append([binVec,rayBin])
 

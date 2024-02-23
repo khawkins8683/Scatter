@@ -37,53 +37,77 @@ def MonteCarloTrace(RayPath, mat1, DiffuseMaterial, debug= False):
     RayPath.k = RayPath.refract(eta, mat1, DiffuseMaterial)
     RayPath.r = np.append(RayPath.r , np.array([np.array([0,0,0])]), axis = 0)
     RayPath.updateJonesSPFresnel(eta, mat1,DiffuseMaterial, "REFRACT")
+    RayPath.updateMMFromJones()
     #now update the ray polarization properties
-    RayPath.updateHorizontal(kin)
+    RayPath.updateHorizontal(eta)
     RayPath.updateOPL(mat1)
     RayPath.updateTransmission(mat1)
     RayPath.updateQMatrix(eta,kin)
     RayPath.updatePRTMatrix(eta,kin)
-    RayPath.updateMMMatrix()
+    RayPath.updateGlobalMM()
     #now that we are in the material we will propagate the ray until a z component is either 0<z<thickness
     live = True;i = 1
     while live:
         i += 1
         kin = RayPath.k
+        if debug: print("Next MonteCarlo step: ",i)
         #step  1.1 get prop distance 
         r = DiffuseMaterial.sampleDistance()*RayPath.k + RayPath.r[-1]
         #check to see if we leave the material
-        #update ray r and ray k and eta -> jons
-        if r[-1]<0 or r[-1]>thickness:
+        #update ray r and ray k and eta -> jones -> mueller
+        if r[-1]<=0 or r[-1]>=thickness:
+            # prop ray to the edge of the material
             if debug: print("CHECK TRiggered")
-            if r[-1]<0:#see if retro reflection occurs
-                # prop ray to the edge of the material
-                sign=-1
-                live = RayPath.interface(DiffuseMaterial,mat1,0,sign)
-                if debug: print("Retro-REFLECT Out of material? ",live)
-            if r[-1]>thickness:#see if ray transmits
-                sign=1
-                live = RayPath.interface(DiffuseMaterial,mat1,thickness,sign)
-                if debug: print("Transmits OUT of material? ",live)
+            if r[-1]<=0:#see if retro reflection occurs
+                sign=-1;thickness=0
+            else:#see if ray transmits
+                sign=1;thickness = DiffuseMaterial.thickness               
+
+            live = RayPath.interface(DiffuseMaterial,mat1,thickness,sign)#updates k and r
+            if debug: print("Leave Material? ",live,RayPath.r[-1],RayPath.k,[sign,thickness])
             mode = "REFLECT" if live else "REFRACT"#internal TIR vs 
             eta = np.array([0,0,sign])
-            RayPath.updateJonesSPFresnel(eta, DiffuseMaterial, mat1, mode)
+            RayPath.updateJonesSPFresnel(eta, DiffuseMaterial, mat1, mode)#mode for reflectino/refraction coeffs
+            RayPath.updateMMFromJones()
+            if debug: print("Surface updated jm/mm: ",i)
         else:
-            pass
             # get scatter k direction
             [theta,phi] = DiffuseMaterial.phaseFunction(RayPath)#theta and phi are relative to the ray
-            live = RayPath.scatter(theta,phi,r)#just use previously calculated r
-            #here we also should update the jones matrix => isotropic => identity
-            RayPath.updateJonesSPScatter()
+            live = RayPath.scatter(theta,phi,r)#just use previously calculated r#updates k and r
             eta = u.ScatterEta(kin,RayPath.k)#get eta halfway between kin and RayPath.scatter
+            
+            #here we also should update the jones matrix => isotropic => identity
+            #this needs to have a material input
+            ## get the jones / MM from the material
+            if DiffuseMaterial.calculus is "jones":
+                #update the stored jones matrix => then mueller
+                if debug: print("scatter updated jm/mm: ",i)
+                RayPath.updateJonesSPScatter()
+                RayPath.updateMMFromJones()
+            elif DiffuseMaterial.calculus is "mueller":
+                #zero jones and update mueller
+                pass
+            else:
+                print("calculus type error: ")
+            
+            
+        #here we have => k/r/eta/jones/mm-stokes
         #TODO - update more ray parameters
         #TODO - update opl
-        RayPath.updateHorizontal(kin)
+        #non - pol + local to global updates
+        
         RayPath.updateOPL(DiffuseMaterial)
         RayPath.updateTransmission(DiffuseMaterial)
         RayPath.updateQMatrix(eta,kin)
+        RayPath.updateHorizontal(eta)
+        #for depolarizing MMS => this could be difficult
+        #certain materials need to not convert the Jones => i.e ray input
         RayPath.updatePRTMatrix(eta,kin)
-        RayPath.updateMMMatrix()
+        RayPath.updateGlobalMM()
         #update Mueller Matrix
+        if i > 1000:
+            print("Infinite: trace -- abort: ")
+            live = False
     return RayPath
 
 def MonteCarloTrial(N,mat1,mat2,wavelength,kIn, debug= False):

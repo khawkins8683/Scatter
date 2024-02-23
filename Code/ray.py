@@ -16,17 +16,19 @@ def propRayToEdge(RayPath,zValue,sign):
 
 #TODO -- add transmission parameter
 class Ray:
-    def __init__(self, k, r, wavelength):
+    def __init__(self, k, r, wavelength, stokeIn = np.array([1,0,0,0])):
         self.k = k          #intermediate ks can be calculated from the position vectors
         self.r = np.array([r])#         units in microns
         self.wavelength = wavelength# units of microns
         self.OPL = np.array([0])
         self.transmission = np.array([1])
-        self.horizontal = np.array([np.array([1,0,0])])
+        self.horizontal = np.array([u.CreateSP(np.array([0,0,1]),k)[0]])
         self.Q = np.array([ np.identity(3) ])
         self.jones = np.array([ np.identity(2) ])
         self.PRT = np.array([ np.identity(3) ])
         self.MM = np.array([ np.identity(4) ])
+        self.MMLocal = np.array([np.identity(4)] )
+        self.stokes = np.array([ stokeIn ])
 #methods
 # Cumulative calculations OPL/PRT/Q
     def OPLCumulative(self):
@@ -37,6 +39,12 @@ class Ray:
     
     def QCumulative(self):
         return functools.reduce( np.dot, self.Q )
+    
+    def PRTCumulative(self):
+        return functools.reduce( np.dot, self.PRT )
+    
+    def MMCumulative(self):
+        return functools.reduce( np.dot, self.MM )        
 #utility    
     def refract(self,eta,mat1,mat2):
         return u.Refract3D(mat1.n,mat2.n, eta, self.k)
@@ -94,31 +102,42 @@ class Ray:
             print("Mode error --- updateJonesSP ")
 
         self.jones = np.append(self.jones , np.array([jones]), axis = 0)
-        return jones    
-
+        return jones   
+     
+    #some scattered jones may not be created by scatter!
     def updateJonesSPScatter(self):
+        #here => if material is is use identity if 
         jones = np.identity(2)
         self.jones = np.append(self.jones , np.array([jones]), axis = 0)
         return jones
+
 #geometry updates
-    def updateHorizontal(self,kin):#*note k should be updated before this is called!!!!!!!!
-        h = np.cross(kin,self.k)
+    def updateHorizontal(self,eta):#*note k should be updated before this is called!!!!!!!!
+        h = u.CreateSP(eta,self.k)[0]#np.dot(self.Q[-1], self.horizontal[-1] ) #np.cross(kin,self.k)
         self.horizontal = np.append(self.horizontal , np.array([h]), axis = 0)
         return h   
+
     def updateQMatrix(self,eta,kin):#*note k should be updated before this is called!!!!!!!!
         q = u.PRT(np.identity(2), eta,kin, self.k)
         self.Q = np.append(self.Q , np.array([q]), axis = 0)
         return q    
+
 #polarization matrix updates - based ON JONES matrix
     def updatePRTMatrix(self,eta,kin):#*note k should be updated before this is called!!!!!!!!
         prt = u.PRT(self.jones[-1], eta,kin, self.k)
-        self.PRT = np.append(self.Q , np.array([prt]), axis = 0)
+        self.PRT = np.append(self.PRT, np.array([prt]), axis = 0)
         return prt  
     
-    def updateMMMatrix(self):#*note k should be updated before this is called!!!!!!!!
+    #TODO => separate  the rotation from the MM creation
+    def updateMMFromJones(self):#*note k should be updated before this is called!!!!!!!!
         #first get theta
+        mm = np.real(u.JonesToMueller(self.jones[-1]))
+        self.MMLocal = np.append(self.MMLocal , np.array([mm]), axis = 0)
+        return mm
+
+    def updateGlobalMM(self):
+        mm = self.MMLocal[-1]
         theta = u.vectorAngle(self.horizontal[-2],self.horizontal[-1])
-        mm = u.JonesToMueller(self.jones[-1])
         mmRotated = u.RotateMueller(mm,theta)
         self.MM = np.append(self.MM , np.array([mmRotated]), axis = 0)
-        return mmRotated 
+        return mmRotated

@@ -20,8 +20,26 @@ def HG(theta,g):
 
 HG = np.vectorize(HG)
 
-def HGPhaseFunction(g, N=1):
-    pass
+#TODO -- add in N to return N samples
+def HGPhaseFunction(g):#returns theta phi values
+    v1 = HG(0,g)
+    v2 = HG(np.pi,g)
+    vList = np.array([v1,v2])
+    minV = np.min(vList)
+    maxV = np.max(vList)
+    randTest = np.random.rand(1) * (maxV - minV)
+
+    thetaTest = np.random.rand(1)*np.pi
+    funcTest = HG(thetaTest,g)
+    
+    if funcTest > randTest:
+        #pass
+        phi = np.random.rand(1) * 2*np.pi
+        return [thetaTest,phi]
+    else:
+        return HGPhaseFunction(g)
+
+
 
 
 def DustMueller(kIn,kScat):
@@ -42,15 +60,20 @@ def MuellerBlock(a,p1,p2,p3,p4):
 #also needs a phase function
 
 class Material:
-    def __init__(self, n, thickness, scat):
+    def __init__(self, n, meanDistance, thickness):
         self.n = np.real(n)
         self.k = np.imag(n)
-        self.scatParams = scat
         self.thickness = thickness
+        self.type = "isotropic"
+        self.calculus = "jones"
+        self.meanDistance = meanDistance
+    
+    def __str__(self):
+        return 'Material obj: \ntype: %s\nCalculus: %s\nn: %f\nk: %f\nThickness: %f [meters]'%(self.type, self.calculus,self.n, self.k,self.thickness)       
 
     def sampleDistance(self):
         #note this assumes self type is exp
-        d = ExpSample( np.random.rand() , self.scatParams['mean'] )
+        d = ExpSample( np.random.rand() , self.meanDistance)
         return d
     
     #run this to check for absobption 
@@ -64,9 +87,15 @@ class Material:
 
 
 
-#class ElectronMaterial(Material):
+class HGMaterial(Material):
+    def __init__(self, n, thickness, meanDistance, g_value):
+        Material.__init__(self,n, thickness, meanDistance)
+        self.g = g_value
+        self.type = "anisotropic"
 
-#def phaseFunction(self,ray)
+    def phaseFunction(self,ray):
+        [theta,phi] = HGPhaseFunction(self.g)
+        return [theta,phi]
 
 
 # ------------- notes --------------------------

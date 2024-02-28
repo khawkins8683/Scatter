@@ -85,6 +85,15 @@ class Material:
     def phaseFunction(self,ray):
         return IsotropicPhaseFunction(1)
 
+#TODO:: add in i max
+class Material2D(Material):
+    def __init__(self, n, thickness, meanDistance):
+        Material.__init__(self,n, thickness, meanDistance)
+        self.type = "material2D"
+
+    def phaseFunction(self,ray):
+        [theta,phi] = IsotropicPhaseFunction(1)
+        return [theta, 0]
 
 
 class HGMaterial(Material):

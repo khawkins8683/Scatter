@@ -104,6 +104,38 @@ def BinRaysInteraction(raySet):
         for ray in rays:
             bin.append( len(ray.r)-1 )
     return bins
+### plotting 2D
+def binRays2D(raySet,eta,n):
+    theta = np.pi/n
+    thetaList = np.linspace(0,np.pi/2,n)#-np.pi/2
+    dataOut = []
+    for angle in thetaList:
+        rayBin = []
+        for ray in raySet:
+            angleTest = u.vectorAngle(ray.k,eta) - angle
+            if np.abs(angleTest)<=theta:
+                rayBin.append(ray)
+        dataOut.append([angle,rayBin])
+    return dataOut
+
+
+def binRays2DScatN(raySet,eta,n,ii):
+    theta = np.pi/n
+    thetaList = np.linspace(0,np.pi/2,n)#-np.pi/2
+    dataOut = []
+    for angle in thetaList:
+        rayBin = []
+        for ray in raySet:
+            angleTest = u.vectorAngle(ray.k,eta) - angle
+            length = len(ray.r)
+            if np.abs(angleTest) <= theta/2 and length > ii:
+                rayBin.append(ray)
+        dataOut.append([angle,rayBin])
+    return dataOut
+
+
+
+
 
 
 #BSDF --------------------------

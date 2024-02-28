@@ -1,6 +1,6 @@
 import functools 
 import numpy as np
-from . import utility as u
+import utility as u
 
 def propRayToEdge(RayPath,zValue,sign):
     deltaZ = (sign*-1)*(RayPath.r[-1][-1] - zValue) #-thickness for transmission
@@ -29,6 +29,10 @@ class Ray:
         self.MM = np.array([ np.identity(4) ])
         self.MMLocal = np.array([np.identity(4)] )
         self.stokes = np.array([ stokeIn ])
+
+    def __str__(self):
+        return 'Ray obj: \nlength: %f'%(len(self.r))       
+
 #methods
 # Cumulative calculations OPL/PRT/Q
     def OPLCumulative(self):
@@ -88,12 +92,12 @@ class Ray:
         n1 = mat1.n + 1j *mat1.k
         n2 = mat2.n + 1j *mat2.k
         thetat = u.vectorAngle(self.k , eta)
-        if mode is "REFLECT":
+        if mode == "REFLECT":
             thetai = thetat
             rs = (n1*np.cos(thetai) - n2*np.cos(thetai)  ) / (n1*np.cos(thetai) + n2*np.cos(thetai)  )
             rp = (n2*np.cos(thetai) - n1*np.cos(thetai)  ) / (n1*np.cos(thetai) + n2*np.cos(thetai)  )
             jones = np.array([[rs,0],[0,rp]])
-        elif mode is "REFRACT":
+        elif mode == "REFRACT":
             thetai = u.SnellsLaw(mat2.n,mat1.n,thetat)
             ts = 2*n1*np.cos(thetai) / (n1*np.cos(thetai) + n2*np.cos(thetat)  )
             tp = 2*n1*np.cos(thetai) / (n2*np.cos(thetai) + n1*np.cos(thetat)  )

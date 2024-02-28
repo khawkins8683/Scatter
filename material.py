@@ -1,5 +1,5 @@
 import numpy as np
-from . import utility as u
+import utility as u
 
 #exp typ material distance utility
 def ProbDistExp( x, beta ):
@@ -93,7 +93,7 @@ class Material2D(Material):
 
     def phaseFunction(self,ray):
         [theta,phi] = IsotropicPhaseFunction(1)
-        return [theta, 0]
+        return [theta, np.array([0]) ]
 
 
 class HGMaterial(Material):

@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pySCATMECH as scatmech
 from pySCATMECH.fresnel import *
-from . import ray as r
-from . import utility as u
+import ray as r
+import utility as u
 
 #stack = scatmech.fresnel.FilmStack()
 #glass = scatmech.fresnel.OpticalFunction(1.5)
@@ -27,7 +27,8 @@ def RayleighJones(thetaScat): # I don't think we need phi scat just yet
 ## TODO - add in prt - jones from fresnel
 ## TODO - adding ray paths together/ making BSDF from ray paths
 
-def MonteCarloTrace(RayPath, mat1, DiffuseMaterial, debug= False):
+def MonteCarloTrace(inputs):
+    [RayPath, mat1, DiffuseMaterial, debug] = inputs
     thickness = DiffuseMaterial.thickness
     # Step 1 -> refract ray into the material
     #update rayQ and jones and stuff
@@ -79,16 +80,16 @@ def MonteCarloTrace(RayPath, mat1, DiffuseMaterial, debug= False):
             #here we also should update the jones matrix => isotropic => identity
             #this needs to have a material input
             ## get the jones / MM from the material
-            if DiffuseMaterial.calculus is "jones":
+            if DiffuseMaterial.calculus == "jones":
                 #update the stored jones matrix => then mueller
                 if debug: print("scatter updated jm/mm: ",i)
                 RayPath.updateJonesSPScatter()
                 RayPath.updateMMFromJones()
-            elif DiffuseMaterial.calculus is "mueller":
+            elif DiffuseMaterial.calculus == "mueller":
                 #zero jones and update mueller
                 pass
             else:
-                print("calculus type error: ")
+                print("calculus type error: ",DiffuseMaterial.calculus=="jones")
             
             
         #here we have => k/r/eta/jones/mm-stokes
@@ -115,5 +116,5 @@ def MonteCarloTrial(N,mat1,mat2,wavelength,kIn, debug= False):
     rayList = []
     for i in range(N):
         if debug: print( "Tracing Ray i: ", i )
-        rayList.append( MonteCarloTrace( r.Ray(kIn, np.array([0,0,0]), wavelength ), mat1, mat2, debug  ) )
+        rayList.append( MonteCarloTrace( [r.Ray(kIn, np.array([0,0,0]), wavelength ), mat1, mat2, debug  ]) )
     return rayList

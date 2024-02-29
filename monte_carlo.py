@@ -37,8 +37,8 @@ def MonteCarloTrace(inputs):
     eta = np.array([0,0,1])
     RayPath.k = RayPath.refract(eta, mat1, DiffuseMaterial)
     RayPath.r = np.append(RayPath.r , np.array([np.array([0,0,0])]), axis = 0)
-    RayPath.updateJonesSPFresnel(eta, mat1,DiffuseMaterial, "REFRACT")
-    RayPath.updateMMFromJones()
+    RayPath.updateJonesSPFresnel(kin,eta, mat1,DiffuseMaterial, "REFRACT")
+    RayPath.updateMMFromJonesFresnel("REFRACT",eta,mat1,DiffuseMaterial)
     #now update the ray polarization properties
     RayPath.updateHorizontal(eta)
     RayPath.updateOPL(mat1)
@@ -68,8 +68,8 @@ def MonteCarloTrace(inputs):
             if debug: print("Leave Material? ",live,RayPath.r[-1],RayPath.k,[sign,thickness])
             mode = "REFLECT" if live else "REFRACT"#internal TIR vs 
             eta = np.array([0,0,sign])
-            RayPath.updateJonesSPFresnel(eta, DiffuseMaterial, mat1, mode)#mode for reflectino/refraction coeffs
-            RayPath.updateMMFromJones()
+            RayPath.updateJonesSPFresnel(kin,eta, DiffuseMaterial, mat1, mode)#mode for reflectino/refraction coeffs
+            RayPath.updateMMFromJonesFresnel(mode,eta,DiffuseMaterial,mat1)
             if debug: print("Surface updated jm/mm: ",i)
         else:
             # get scatter k direction

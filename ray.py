@@ -88,23 +88,30 @@ class Ray:
         self.transmission = np.append(self.transmission , np.array([abs]), axis = 0)
         return abs
 #update jones/calculate jones
-    def updateJonesSPFresnel(self, eta, mat1,mat2, mode):
+    def updateJonesSPFresnel(self,kIn, eta, mat1,mat2, mode):
         n1 = mat1.n + 1j *mat1.k
         n2 = mat2.n + 1j *mat2.k
-        thetat = u.vectorAngle(self.k , eta)
+        thetai = u.vectorAngle(kIn , eta)
+        thetat = u.SnellsLaw(n1,n2,thetai)
+        #thetat = u.vectorAngle(self.k , eta)
+        #thetai = u.SnellsLaw(mat2.n,mat1.n,thetat)
+        #print("kvec in ",self.k," in mat ",mat1)
+        #print("Theta t: ",thetat/u.deg)
+        #print("Theta i: ",thetai/u.deg)
         if mode == "REFLECT":
-            thetai = thetat
-            rs = (n1*np.cos(thetai) - n2*np.cos(thetai)  ) / (n1*np.cos(thetai) + n2*np.cos(thetai)  )
-            rp = (n2*np.cos(thetai) - n1*np.cos(thetai)  ) / (n1*np.cos(thetai) + n2*np.cos(thetai)  )
+            rs = (n1*np.cos(thetai) - n2*np.cos(thetat)  ) / (n1*np.cos(thetai) + n2*np.cos(thetat)  )
+            rp = (n2*np.cos(thetai) - n1*np.cos(thetat)  ) / (n2*np.cos(thetai) + n1*np.cos(thetat)  )
             jones = np.array([[rs,0],[0,rp]])
+            
         elif mode == "REFRACT":
-            thetai = u.SnellsLaw(mat2.n,mat1.n,thetat)
+            
             ts = 2*n1*np.cos(thetai) / (n1*np.cos(thetai) + n2*np.cos(thetat)  )
             tp = 2*n1*np.cos(thetai) / (n2*np.cos(thetai) + n1*np.cos(thetat)  )
             jones = np.array([[ts,0],[0,tp]])
         else:
             print("Mode error --- updateJonesSP ")
 
+        #print("Jones: ",jones)
         self.jones = np.append(self.jones , np.array([jones]), axis = 0)
         return jones   
      
@@ -135,7 +142,22 @@ class Ray:
     #TODO => separate  the rotation from the MM creation
     def updateMMFromJones(self):#*note k should be updated before this is called!!!!!!!!
         #first get theta
+        #we need a transmission factor here
         mm = np.real(u.JonesToMueller(self.jones[-1]))
+        self.MMLocal = np.append(self.MMLocal , np.array([mm]), axis = 0)
+        return mm
+
+
+    def updateMMFromJonesFresnel(self,mode,eta,mat1,mat2):#*note k should be updated before this is called!!!!!!!!
+        #first get theta
+        #we need a transmission factor here
+        if mode == "REFLECT":
+            factor = 1
+        elif mode == "REFRACT":
+            thetat = u.vectorAngle(self.k , eta)#assuming this is kout
+            thetai = u.SnellsLaw(mat2.n,mat1.n,thetat)
+            factor = (mat2.n*np.cos(thetat)) / (mat1.n*np.cos(thetai))
+        mm = factor * np.real(u.JonesToMueller(self.jones[-1]))
         self.MMLocal = np.append(self.MMLocal , np.array([mm]), axis = 0)
         return mm
 
